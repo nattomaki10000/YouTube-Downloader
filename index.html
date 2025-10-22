@@ -211,61 +211,80 @@ html,body{
   </div>
 
 <script>
-(() => {
-  const sendBtn = document.getElementById('send');
-  const clearBtn = document.getElementById('clear');
-  const urlInput = document.getElementById('yturl');
-  const ownerChk = document.getElementById('owner');
-  const formatInput = document.getElementById('format');
-  const logEl = document.getElementById('log');
+function isYoutubeUrl(input) {
+  if (!input || typeof input !== "string") return false;
 
-  function isYoutubeUrl(u) {
-    try { const p = new URL(u); return /(^|\\.)youtube\\.com$|(^|\\.)youtu\\.be$/.test(p.hostname); } catch(e){return false;}
+  // 余計な空白や改行を削除
+  const u = input.trim();
+
+  // 正規表現で基本構造をざっくりチェック
+  const ytPattern = /^(https?:\/\/)?(www\.)?(m\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)(\/|$)/i;
+  if (!ytPattern.test(u)) return false;
+
+  try {
+    const url = new URL(u.startsWith("http") ? u : "https://" + u);
+    const host = url.hostname.toLowerCase();
+
+    // 許可ドメイン群
+    const validHost =
+      host.endsWith("youtube.com") ||
+      host.endsWith("youtu.be") ||
+      host.endsWith("youtube-nocookie.com");
+
+    if (!validHost) return false;
+
+    // 有効な形式：watch?v=, shorts/, embed/, youtu.be/xxxx
+    const hasVideoParam = url.searchParams.has("v");
+    const isShorts = url.pathname.startsWith("/shorts/");
+    const isEmbed = url.pathname.startsWith("/embed/");
+    const isShortLink = host.includes("youtu.be") && url.pathname.length > 1;
+
+    return hasVideoParam || isShorts || isEmbed || isShortLink;
+  } catch {
+    return false;
   }
-  function setLog(txt) { logEl.textContent = txt; logEl.scrollTop = logEl.scrollHeight; }
+}
 
-  sendBtn.addEventListener('click', async () => {
-    const url = urlInput.value.trim();
-    const fmt = formatInput.value.trim();
-    if (!url) { setLog('URL を入力してください。'); return; }
-    if (!isYoutubeUrl(url)) { setLog('YouTube の URL を入力してください。'); return; }
-    if (!ownerChk.checked) { setLog('所有者チェックを入れてください。'); return; }
+// ボタンクリック処理
+async function startDownload() {
+  const urlInput = document.getElementById("urlInput").value;
+  const ownerCheck = document.getElementById("ownerConfirm").checked;
+  const resultBox = document.getElementById("result");
 
-    setLog('サーバーへ送信中…（ダウンロードに時間がかかることがあります）');
+  resultBox.innerHTML = "";
 
-    try {
-      const res = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, format: fmt, owner_confirm: true })
-      });
-      const data = await res.json().catch(()=>({}));
-      if (res.ok) {
-        let out = 'ダウンロード完了 — 出力ファイル一覧:\\n\\n';
-        if (data.output && data.output.length) {
-          data.output.forEach(f => {
-            const href = location.origin + f.url;
-            out += '• ' + f.name + ' → ' + href + '\\n';
-          });
-        } else {
-          out += '(出力ファイルは見つかりませんでした)';
-        }
-        setLog(out);
-      } else {
-        setLog('エラー: ' + (data.message || res.statusText));
-      }
-    } catch (e) {
-      setLog('送信エラー: ' + e.message);
-    }
-  });
+  if (!isYoutubeUrl(urlInput)) {
+    resultBox.innerHTML = "<div class='error'>YouTubeリンクを入力してください。</div>";
+    return;
+  }
 
-  clearBtn.addEventListener('click', () => {
-    urlInput.value = '';
-    formatInput.value = '';
-    ownerChk.checked = false;
-    setLog('フォームをクリアしました。');
-  });
-})();
+  if (!ownerCheck) {
+    resultBox.innerHTML = "<div class='error'>動画の所有者であることを確認してください。</div>";
+    return;
+  }
+
+  resultBox.innerHTML = "<div class='loading'>ダウンロードを開始しています...</div>";
+
+  try {
+    const res = await fetch("/api/download", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: urlInput })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    resultBox.innerHTML =
+      "<div class='success'>✅ ダウンロード完了:<br><a href='" +
+      data.file +
+      "' target='_blank'>" +
+      data.file +
+      "</a></div>";
+  } catch (err) {
+    resultBox.innerHTML = "<div class='error'>エラー: " + err.message + "</div>";
+  }
+}
 </script>
 </body>
 </html>
