@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTubeダウンローダー</title>
+<style>
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #141e30, #243b55);
+  font-family: "Segoe UI", sans-serif;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  padding-top: 60px;
+}
+.container {
+  width: 90%;
+  max-width: 600px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+h1 {
+  text-align: center;
+  font-size: 1.8em;
+  margin-bottom: 20px;
+}
+input[type="text"] {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+button {
+  margin-top: 15px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  background: #00aaff;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+button:hover {
+  background: #0088cc;
+}
+label {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.9em;
+}
+#result {
+  margin-top: 20px;
+  padding: 10px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 6px;
+  word-break: break-all;
+}
+.success { color: #00ffcc; }
+.error { color: #ff7777; }
+.loading { color: #ffff66; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>YouTube ダウンローダー</h1>
+    <input type="text" id="urlInput" placeholder="YouTubeのURLを入力" />
+    <label><input type="checkbox" id="ownerConfirm"> この動画の所有者であることを確認しました</label>
+    <button onclick="startDownload()">ダウンロード開始</button>
+    <div id="result"></div>
+  </div>
+
+<script>
+function isYoutubeUrl(input) {
+  if (!input || typeof input !== "string") return false;
+  const u = input.trim();
+  const ytPattern = /^(https?:\/\/)?(www\.)?(m\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)(\/|$)/i;
+  if (!ytPattern.test(u)) return false;
+  try {
+    const url = new URL(u.startsWith("http") ? u : "https://" + u);
+    const host = url.hostname.toLowerCase();
+    const validHost = host.endsWith("youtube.com") || host.endsWith("youtu.be") || host.endsWith("youtube-nocookie.com");
+    if (!validHost) return false;
+    const hasVideoParam = url.searchParams.has("v");
+    const isShorts = url.pathname.startsWith("/shorts/");
+    const isEmbed = url.pathname.startsWith("/embed/");
+    const isShortLink = host.includes("youtu.be") && url.pathname.length > 1;
+    return hasVideoParam || isShorts || isEmbed || isShortLink;
+  } catch { return false; }
+}
+
+async function startDownload() {
+  const urlInput = document.getElementById("urlInput").value;
+  const ownerCheck = document.getElementById("ownerConfirm").checked;
+  const resultBox = document.getElementById("result");
+  resultBox.innerHTML = "";
+
+  if (!isYoutubeUrl(urlInput)) {
+    resultBox.innerHTML = "<div class='error'>YouTubeリンクを入力してください。</div>";
+    return;
+  }
+  if (!ownerCheck) {
+    resultBox.innerHTML = "<div class='error'>動画の所有者であることを確認してください。</div>";
+    return;
+  }
+
+  resultBox.innerHTML = "<div class='loading'>サーバーに送信中...</div>";
+
+  try {
+    const res = await fetch("https://your-render-app.onrender.com/api/download", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: urlInput })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    resultBox.innerHTML =
+      "<div class='success'>✅ ダウンロード完了:<br><a href='" +
+      data.file +
+      "' target='_blank'>" +
+      data.file +
+      "</a></div>";
+  } catch (err) {
+    resultBox.innerHTML = "<div class='error'>エラー: " + err.message + "</div>";
+  }
+}
+</script>
+</body>
+</html>
