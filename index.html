@@ -116,7 +116,7 @@ async function startDownload() {
   resultBox.innerHTML = "<div class='loading'>サーバーに送信中...</div>";
 
   try {
-    const res = await fetch("https://your-render-app.onrender.com/api/download", {
+    const res = await fetch("https://ytr-dds9.onrender.com", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: urlInput })
