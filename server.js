@@ -18,10 +18,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Validate simple YouTube URL
 function isYoutubeUrl(u) {
+  if (!u || typeof u !== "string") return false;
   try {
-    const p = new URL(u);
-    return /(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(p.hostname);
-  } catch (e) { return false; }
+    const url = new URL(u.trim());
+    const host = url.hostname.toLowerCase();
+
+    // youtube.com, youtu.be, youtube-nocookie.com に対応
+    const validHost =
+      host.endsWith("youtube.com") ||
+      host.endsWith("youtu.be") ||
+      host.endsWith("youtube-nocookie.com");
+
+    if (!validHost) return false;
+
+    // 短縮URL (youtu.be/xxxx)
+    if (host.includes("youtu.be") && url.pathname.length > 1) return true;
+
+    // watch?v=xxxx or shorts/xxxx or embed/xxxx 形式
+    const hasVideoParam = url.searchParams.has("v");
+    const isShorts = url.pathname.startsWith("/shorts/");
+    const isEmbed = url.pathname.startsWith("/embed/");
+    return hasVideoParam || isShorts || isEmbed;
+  } catch {
+    return false;
+  }
 }
 
 // POST /api/download
