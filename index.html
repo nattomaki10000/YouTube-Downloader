@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>YouTube ダウンロード（シンプル版）</title>
+
+<style>
+/* ---------- 変数 ---------- */
+:root{
+  --bg-top:#071426;
+  --bg-bottom:#032733;
+  --card-bg: linear-gradient(180deg,#072033 0%, #062733 100%);
+  --accent-1:#3b82f6;
+  --accent-2:#06b6d4;
+  --text:#e7f3ff;
+  --muted:#9fb7df;
+  --card-radius:12px;
+  --gap:18px;
+  --right-width: clamp(260px, 28%, 360px);
+  font-family: Inter, "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  color:var(--text);
+}
+
+/* ---------- ベース ---------- */
+html,body{
+  height:100%;
+  margin:0;
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  -webkit-text-size-adjust:100%;
+  box-sizing:border-box;
+  /* safe-area は body ではなく page の padding で扱う */
+}
+
+/* ページの余白（safe-area を適切に扱いつつ最小値を保証） */
+.page {
+  min-height:100%;
+  display:flex;
+  align-items:flex-start; /* 上寄せ */
+  justify-content:center;
+  /* 上端の余白を小さく、安全域があればそれを考慮 */
+  padding-top: max(12px, env(safe-area-inset-top, 12px));
+  padding-right: max(12px, env(safe-area-inset-right, 12px));
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  padding-left: max(12px, env(safe-area-inset-left, 12px));
+}
+
+/* 中身ラッパー：右側固定幅、左側は縮む可能性あり */
+.wrapper {
+  width:100%;
+  max-width:1100px;
+  display:grid;
+  grid-template-columns: minmax(0, 1fr) var(--right-width);
+  gap:var(--gap);
+  align-items:start;
+}
+
+/* カード */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  padding:18px;
+  box-shadow: 0 10px 30px rgba(3,9,20,0.55);
+  border: 1px solid rgba(255,255,255,0.03);
+  /* 子要素が縮むために必須 */
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* ヘッダー */
+.header {
+  grid-column: 1 / -1;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.header h1 { margin:0; font-size:18px; }
+.header .small { margin:0; color:var(--muted); font-size:13px; }
+
+/* フォーム（左） */
+.form { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.label { font-size:13px; color:var(--muted); margin-bottom:6px; }
+.input {
+  width:100%;
+  padding:10px 12px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.05);
+  background:rgba(255,255,255,0.02);
+  color:var(--text);
+  font-size:14px;
+  outline:none;
+  box-sizing:border-box; /* 重要：幅計算を含める */
+  min-width:0; /* 重要：親の縮小を許可 */
+}
+.input:focus {
+  box-shadow: 0 6px 22px rgba(50,130,255,0.08);
+  border-color: rgba(59,130,246,0.6);
+}
+
+/* ボタン */
+.btn {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 14px;
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
+  font-weight:700;
+  color:#001825;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  box-shadow: 0 6px 18px rgba(3,102,214,0.16);
+}
+.btn.ghost {
+  background: rgba(255,255,255,0.04);
+  color:var(--text);
+  box-shadow:none;
+}
+
+/* チェック */
+.row-check { display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px; }
+
+/* 右側ログ */
+.log-card {
+  padding:14px;
+  max-height: 70vh;
+  overflow:auto;
+  background: linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0.006));
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.03);
+  min-width:0;
+}
+.log-title { font-size:13px; color:var(--muted); margin:0 0 8px 0; }
+.log-content { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace; font-size:13px; color:#dff7ff; white-space:pre-wrap; }
+
+/* ファイルリンク */
+.file-link { color:#cfefff; text-decoration:none; }
+.file-link:hover { text-decoration:underline; }
+
+/* フッター注意書き */
+.footer {
+  grid-column: 1 / -1;
+  margin-top:6px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+/* レスポンシブ */
+@media (max-width:980px){
+  :root { --right-width: 320px; }
+  .wrapper { grid-template-columns: minmax(0,1fr) var(--right-width); }
+}
+@media (max-width:760px){
+  .wrapper { grid-template-columns: 1fr; }
+  .header { flex-direction:column; align-items:flex-start; gap:6px; }
+  .card { padding:14px; }
+}
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="wrapper">
+      <div class="card header">
+        <div>
+          <h1>YouTube ダウンロード（シンプル版）</h1>
+          <p class="small">※ 権利のある動画のみダウンロードしてください。</p>
+        </div>
+        <p class="small" style="margin:0">ローカル or コンテナで実行してください</p>
+      </div>
+
+      <!-- 左: フォーム -->
+      <div class="card">
+        <div class="form" role="form" aria-labelledby="form-title">
+          <div>
+            <label class="label" for="yturl">YouTube の URL</label>
+            <input id="yturl" class="input" type="text" placeholder="https://www.youtube.com/watch?v=XXXXXXXXXXX" />
+          </div>
+
+          <div>
+            <label class="label" for="format">形式（任意）</label>
+            <input id="format" class="input" type="text" placeholder="例: best / mp4 / mp3" />
+          </div>
+
+          <div class="row-check">
+            <input id="owner" type="checkbox" />
+            <label for="owner" style="color:var(--muted);font-size:13px">私はこの動画の所有者／ダウンロード許可を得ています（必須）</label>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-top:6px;">
+            <button id="send" class="btn">ダウンロード実行</button>
+            <button id="clear" class="btn ghost">クリア</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右: ログ -->
+      <div class="card log-card" aria-live="polite" aria-atomic="true">
+        <p class="log-title">操作ログ / 出力</p>
+        <div id="log" class="log-content">
+準備完了 — URL と所有者チェックを入力してください。
+        </div>
+      </div>
+
+      <div class="footer card" style="padding:12px;">
+        <div style="font-size:13px;color:var(--muted)">
+          注意：第三者の著作権を侵害する用途には使用しないでください。実運用では認証・レート制限・保存期間などの対策を行ってください。
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const sendBtn = document.getElementById('send');
+  const clearBtn = document.getElementById('clear');
+  const urlInput = document.getElementById('yturl');
+  const ownerChk = document.getElementById('owner');
+  const formatInput = document.getElementById('format');
+  const logEl = document.getElementById('log');
+
+  function isYoutubeUrl(u) {
+    try { const p = new URL(u); return /(^|\\.)youtube\\.com$|(^|\\.)youtu\\.be$/.test(p.hostname); } catch(e){return false;}
+  }
+  function setLog(txt) { logEl.textContent = txt; logEl.scrollTop = logEl.scrollHeight; }
+
+  sendBtn.addEventListener('click', async () => {
+    const url = urlInput.value.trim();
+    const fmt = formatInput.value.trim();
+    if (!url) { setLog('URL を入力してください。'); return; }
+    if (!isYoutubeUrl(url)) { setLog('YouTube の URL を入力してください。'); return; }
+    if (!ownerChk.checked) { setLog('所有者チェックを入れてください。'); return; }
+
+    setLog('サーバーへ送信中…（ダウンロードに時間がかかることがあります）');
+
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, format: fmt, owner_confirm: true })
+      });
+      const data = await res.json().catch(()=>({}));
+      if (res.ok) {
+        let out = 'ダウンロード完了 — 出力ファイル一覧:\\n\\n';
+        if (data.output && data.output.length) {
+          data.output.forEach(f => {
+            const href = location.origin + f.url;
+            out += '• ' + f.name + ' → ' + href + '\\n';
+          });
+        } else {
+          out += '(出力ファイルは見つかりませんでした)';
+        }
+        setLog(out);
+      } else {
+        setLog('エラー: ' + (data.message || res.statusText));
+      }
+    } catch (e) {
+      setLog('送信エラー: ' + e.message);
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    urlInput.value = '';
+    formatInput.value = '';
+    ownerChk.checked = false;
+    setLog('フォームをクリアしました。');
+  });
+})();
+</script>
+</body>
+</html>
