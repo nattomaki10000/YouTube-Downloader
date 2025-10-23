@@ -1,110 +1,182 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YouTube Downloader</title>
-<style>
-  body {
-    font-family: 'Segoe UI', sans-serif;
-    background: linear-gradient(180deg, #ff4b2b, #ff416c);
-    color: white;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    margin: 0;
-    padding: 20px;
-    box-sizing: border-box;
-  }
-  h1 {
-    margin-bottom: 20px;
-    font-size: 2em;
-    text-align: center;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-  }
-  #container {
-    background: rgba(255,255,255,0.12);
-    padding: 20px;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    box-sizing: border-box;
-  }
-  input {
-    width: 100%;
-    padding: 12px;
-    border-radius: 6px;
-    border: none;
-    margin-bottom: 10px;
-    font-size: 1em;
-    box-sizing: border-box;
-  }
-  button {
-    width: 100%;
-    padding: 12px;
-    border: none;
-    border-radius: 6px;
-    background-color: #fff;
-    color: #ff416c;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.3s;
-    font-size: 1em;
-  }
-  button:hover {
-    background-color: #ffe6ec;
-  }
-  #message {
-    margin-top: 10px;
-    font-size: 0.9em;
-    text-align: center;
-    word-break: break-word;
-  }
-  a.download {
-    color: #fff;
-    font-weight: bold;
-    text-decoration: underline;
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>YouTube ダウンローダー</title>
+  <style>
+    :root{
+      --bg1:#071426; --bg2:#042a3d;
+      --card:#062734;
+      --accent1:#3b82f6; --accent2:#06b6d4;
+      --text:#e8f6ff; --muted:#9fb7df;
+      --radius:12px;
+      --maxw:720px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--text);-webkit-font-smoothing:antialiased}
+    .wrap{min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:env(safe-area-inset-top) 16px 32px;gap:20px}
+    .card{width:100%;max-width:var(--maxw);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:var(--radius);padding:22px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 10px 30px rgba(2,6,12,0.6)}
+    h1{margin:0 0 8px;font-size:20px}
+    .lead{margin:0 0 18px;color:var(--muted);font-size:13px}
+    .form-row{display:flex;gap:12px;align-items:center}
+    .col{flex:1;min-width:0} /* allow shrink */
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type="text"]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);font-size:15px}
+    .controls{display:flex;gap:10px;margin-top:12px;align-items:center}
+    button.btn{padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#012;font-weight:700;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text)}
+    .check {display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--muted);font-size:13px}
+    #log{margin-top:14px;padding:12px;border-radius:10px;background:rgba(0,0,0,0.12);min-height:74px;color:#dff6ff;font-size:14px;white-space:pre-wrap;word-break:break-word}
+    a.filelink{color:#bfefff;text-decoration:underline}
+    /* small screens */
+    @media(max-width:640px){
+      .form-row{flex-direction:column;align-items:stretch}
+      .controls{flex-direction:column}
+    }
+  </style>
 </head>
 <body>
-  <h1>YouTube Downloader</h1>
-  <div id="container">
-    <input type="text" id="url" placeholder="YouTubeのリンクを入力してください">
-    <button id="downloadBtn">ダウンロード</button>
-    <div id="message"></div>
-  </div>
-<script>
-document.getElementById("downloadBtn").addEventListener("click", async () => {
-  const url = document.getElementById("url").value.trim();
-  const msg = document.getElementById("message");
-  msg.textContent = "処理中...";
+  <div class="wrap">
+    <main class="card" role="main" aria-labelledby="title">
+      <h1 id="title">YouTube ダウンローダー（Render対応）</h1>
+      <p class="lead">ダウンロード対象は **あなたが権利を持つ動画のみ** を扱ってください。処理はサーバー側で行われます。</p>
 
-  if (!url.includes("youtube.com") && !url.includes("youtu.be")) {
-    msg.textContent = "正しいYouTubeリンクを入力してください。";
+      <div class="form-row" aria-hidden="false">
+        <div class="col">
+          <label for="url">YouTube の URL</label>
+          <input id="url" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=XXXXXXXXXXX" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:10px">
+        <div style="flex:0 0 150px">
+          <label for="format">形式（任意）</label>
+          <input id="format" type="text" placeholder="例: best / mp4 / mp3" />
+        </div>
+        <div style="flex:1;min-width:0">
+          <label>&nbsp;</label>
+          <div class="check"><input id="owner" type="checkbox" /> <label for="owner" style="margin:0">私はこの動画の所有者／利用権を持っています（必須）</label></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="download" class="btn" aria-live="polite">ダウンロード開始</button>
+        <button id="clear" class="ghost" type="button">クリア</button>
+      </div>
+
+      <div id="log" role="status" aria-live="polite">準備完了 — URL と所有者チェックを入れて「ダウンロード開始」を押してください。</div>
+
+      <div style="margin-top:14px;font-size:12px;color:var(--muted)">注：第三者の著作権を侵害する用途には使用しないでください。</div>
+    </main>
+  </div>
+
+<script>
+/* Robust YouTube URL checker */
+function isYoutubeUrl(input){
+  if (!input || typeof input !== 'string') return false;
+  const s = input.trim();
+  // quick pattern (allow omitting protocol)
+  const quick = /^(https?:\/\/)?(www\.)?(m\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)(\/|$)/i;
+  if (!quick.test(s)) return false;
+  try {
+    const url = new URL(s.startsWith('http') ? s : ('https://' + s));
+    const host = url.hostname.toLowerCase();
+    if (!(host.endsWith('youtube.com') || host.endsWith('youtu.be') || host.endsWith('youtube-nocookie.com'))) return false;
+    const hasV = url.searchParams.has('v');
+    const isShorts = url.pathname.startsWith('/shorts/');
+    const isEmbed = url.pathname.startsWith('/embed/');
+    const isShortLink = host.includes('youtu.be') && url.pathname.length > 1;
+    return hasV || isShorts || isEmbed || isShortLink;
+  } catch(e){
+    return false;
+  }
+}
+
+/* UI elements */
+const urlEl = document.getElementById('url');
+const fmtEl = document.getElementById('format');
+const ownerEl = document.getElementById('owner');
+const downloadBtn = document.getElementById('download');
+const clearBtn = document.getElementById('clear');
+const logEl = document.getElementById('log');
+
+/* helper to set log */
+function setLog(txt, cls){
+  logEl.textContent = txt;
+}
+
+/* Prevent pressing Enter from submitting and causing weird reloads */
+urlEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); downloadBtn.click(); } });
+
+/* Download handler */
+downloadBtn.addEventListener('click', async () => {
+  const url = urlEl.value.trim();
+  const format = fmtEl.value.trim();
+
+  if (!isYoutubeUrl(url)){
+    setLog('エラー: YouTube の有効なリンクを入力してください。');
+    return;
+  }
+  if (!ownerEl.checked){
+    setLog('エラー: 所有者チェック（この動画の利用権がある）を入れてください。');
     return;
   }
 
+  setLog('サーバーへ送信中…（ダウンロードは時間がかかることがあります）');
+
   try {
-    const res = await fetch("https://ytr-dds9.onrender.com/api/download", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
+    const controller = new AbortController();
+    // optional timeout: 5 minutes
+    const timeout = setTimeout(()=>controller.abort(), 5 * 60 * 1000);
+
+    const res = await fetch('https://ytr-dds9.onrender.com/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, format }),
+      signal: controller.signal
     });
-    const data = await res.json();
-    if (data.error) {
-      msg.textContent = "エラー: " + data.error;
-    } else if (data.file) {
-      msg.innerHTML = '✅ ダウンロード完了: <a class="download" href="https://ytr-dds9.onrender.com' + data.file + '" target="_blank">こちらをクリック</a>';
-    } else {
-      msg.textContent = "不明な応答です。";
+    clearTimeout(timeout);
+
+    // server returns JSON: { file: "/files/xxxxx.mp4" } or { error: "..." }
+    const data = await res.json().catch(()=>({ error: 'サーバー応答が不正です。' }));
+
+    if (!res.ok){
+      setLog('サーバーエラー：' + (data.error || res.statusText));
+      return;
     }
-  } catch (e) {
-    msg.textContent = "通信エラー: " + e.message;
+
+    if (data.error){
+      setLog('エラー: ' + data.error);
+      return;
+    }
+
+    if (data.file){
+      // Make absolute link
+      const link = new URL(data.file, 'https://ytr-dds9.onrender.com').toString();
+      setLog('ダウンロード完了 — 下のリンクをタップして取得してください：\\n' + link);
+      // create clickable link below log (accessible)
+      logEl.innerHTML = 'ダウンロード完了 — <a class="filelink" href="' + link + '" target="_blank" rel="noopener">こちらをクリックしてダウンロード</a>';
+      return;
+    }
+
+    setLog('不明な応答を受信しました。');
+  } catch (err){
+    if (err.name === 'AbortError'){
+      setLog('エラー: タイムアウトしました（長時間かかっています）。サーバーのログを確認してください。');
+    } else {
+      setLog('通信エラー: ' + err.message);
+    }
   }
+});
+
+/* Clear button */
+clearBtn.addEventListener('click', ()=>{
+  urlEl.value = '';
+  fmtEl.value = '';
+  ownerEl.checked = false;
+  setLog('フォームをクリアしました。');
 });
 </script>
 </body>
