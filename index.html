@@ -53,7 +53,7 @@ btn.addEventListener('click', async ()=>{
   out.textContent = '処理中…';
   const u = urlIn.value.trim();
   if(!isYoutube(u)){ out.textContent = '有効なYouTubeのURLを入力してください。'; return; }
-  if(!owner.checked){ out.textContent = '所有者チェックを入れてください。'; return; }
+  if(!owner.checked){ out.textContent = '信じるチェックを入れてください。'; return; }
 
   try{
     const res = await fetch(SERVER_URL + '/api/geturl', {
